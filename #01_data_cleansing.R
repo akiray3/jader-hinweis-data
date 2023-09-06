@@ -96,6 +96,8 @@ drug2 <- drug %>%
   ) %>%
   dplyr::filter(判定 == TRUE | is.na(判定)) %>%
   dplyr::select(-判定) %>%
+  dplyr::group_by(識別番号) %>%
+  dplyr::distinct(医薬品一般名, .keep_all = TRUE) %>%
   print()
 
 # 確認
