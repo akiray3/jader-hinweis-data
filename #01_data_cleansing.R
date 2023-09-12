@@ -170,4 +170,3 @@ nrow(reac); nrow(reac2)
 length(unique(drug$医薬品一般名))
 length(unique(drug3$医薬品一般名))
 
-rm(list = ls()[!ls() %in% c("demo2", "drug3", "hist", "reac2")])
