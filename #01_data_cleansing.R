@@ -1,25 +1,25 @@
 #01_data_cleansing
 rm(list = ls())
 library("tidyverse") # tidyveseパッケージが必要
+library("googledrive")
 
 # 更新時はyyyymmを変更する
-yyyymm <- "202306"
-fnames <- c("demo", "drug", "reac", "hist")
-names(fnames) <- fnames
+drive_id <- "1yfJAV3PeOzGNMQh8I_By9LvjpWEUTyuD"
+
+# このGoogleドライブ経由でデータをダウンロードする際に
+# アカウントの認証が求められる。特に影響はないので、自身のアカウントを使用すると良い
+googledrive::drive_download(file = as_id("15f_BnzcUhxivz4flGQnHjJkojp3q1DK6"), "demo.csv", overwrite = TRUE)
+googledrive::drive_download(file = as_id("14l2V4M53uSUvx7DwfXMJEj0_1ZI_CNk6"), "drug.csv", overwrite = TRUE)
+googledrive::drive_download(file = as_id("1y85i-CSibeHAR9NSao3a2bdHbcYHxMVq"), "reac.csv", overwrite = TRUE)
+googledrive::drive_download(file = as_id("1u0S4YU_sx1QhtamaMRvYZ4HoFJnnEJYy"), "hist.csv", overwrite = TRUE)
 
 # データの読み込み
-org <- purrr::map(
-    .x = fnames,
-    .f = function(x){
-      xpath <- yyyymm %>%
-        paste0("pmdacasereport", ., "/", x, .,".csv")
-      y <- file(xpath, encoding = "CP932") %>%
-        read.csv() %>%
-        dplyr::as_tibble()
-      return(y)
-    }
-  )
-attach(org)
+demo <- dplyr::as_tibble(read.csv(file("demo.csv", encoding = "CP932")))
+drug <- dplyr::as_tibble(read.csv(file("drug.csv", encoding = "CP932")))
+reac <- dplyr::as_tibble(read.csv(file("reac.csv", encoding = "CP932")))
+hist <- dplyr::as_tibble(read.csv(file("hist.csv", encoding = "CP932")))
+file.remove(paste0(c("demo", "drug", "reac", "hist"), ".csv"))
+
 names(drug) <- stringr::str_remove_all(
     string = names(drug),
     pattern = "[:punct:]"
@@ -170,8 +170,4 @@ nrow(reac); nrow(reac2)
 length(unique(drug$医薬品一般名))
 length(unique(drug3$医薬品一般名))
 
-# 外部ファイルに書き出し
-write.csv(x = demo2, file = "#01_cleansed_data/demo.csv", fileEncoding = "CP932", row.names = FALSE)
-write.csv(x = drug3, file = "#01_cleansed_data/drug.csv", fileEncoding = "CP932", row.names = FALSE)
-write.csv(x = reac2, file = "#01_cleansed_data/reac.csv", fileEncoding = "CP932", row.names = FALSE)
-write.csv(x = hist, file = "#01_cleansed_data/hist.csv", fileEncoding = "CP932", row.names = FALSE)
+rm(list = ls()[!ls() %in% c("demo2", "drug3", "hist", "reac2")])
