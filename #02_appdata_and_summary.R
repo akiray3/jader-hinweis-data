@@ -65,6 +65,11 @@ demo2 <- demo %>%
     ) %>%
     # dplyr::mutate_all(as.factor) %>%
     print()
+
+# "識別番号" 列と "性別" 列を選択
+gender <- demo2 %>%
+  select(識別番号, 性別)
+
 # saveRDS(object = demo2, file = "appdata/demo.obj")
 
 # 3) 閲覧用・アプリ用の「医薬品情報テーブル」の編集
