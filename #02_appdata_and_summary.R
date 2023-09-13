@@ -114,8 +114,12 @@ reac2 <- reac %>%
 
 saveRDS(object = reac2, file = "appdata/reac.obj")
 
-reac_summary <- reac2 %>%
-  dplyr::group_by(有害事象) %>%
+#reac2とgenderを結合させる
+reac3 <- merge(reac2 , gender , by = "識別番号" , all.x = T)
+
+
+reac_summary <- reac3 %>%
+  dplyr::group_by(有害事象 , 性別) %>%
   dplyr::summarise(
     件数 = n(), 
     高齢ROR = NA,
@@ -157,6 +161,7 @@ reac_summary2 <- reac_summary %>%
       )
   ) %>%
   dplyr::relocate(クラス, .after = 件数)
+
 view(reac_summary2)
 
 write.csv(x = reac_summary2, file = "summary/reac_summary.csv", fileEncoding = "CP932", row.names = FALSE)
