@@ -171,6 +171,8 @@ view(reac_summary2)
 view(Female_data)
 view(Male_data)
 
-
+dir.create("summary", showWarnings = FALSE)
 write.csv(x = reac_summary2, file = "summary/reac_summary.csv", fileEncoding = "CP932", row.names = FALSE)
+write.csv(x = Female_data, file = "summary/Female_data.csv", fileEncoding = "CP932", row.names = FALSE)
+write.csv(x = Male_data, file = "summary/Male_data.csv", fileEncoding = "CP932", row.names = FALSE)
 
