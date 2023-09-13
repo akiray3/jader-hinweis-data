@@ -162,7 +162,15 @@ reac_summary2 <- reac_summary %>%
   ) %>%
   dplyr::relocate(クラス, .after = 件数)
 
+Female_data <- reac_summary2 %>%
+  filter(性別 == "女性")
+Male_data <- reac_summary2 %>%
+  filter(性別 == "男性")
+
 view(reac_summary2)
+view(Female_data)
+view(Male_data)
+
 
 write.csv(x = reac_summary2, file = "summary/reac_summary.csv", fileEncoding = "CP932", row.names = FALSE)
 
