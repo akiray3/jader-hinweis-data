@@ -65,6 +65,11 @@ demo2 <- demo %>%
     ) %>%
     # dplyr::mutate_all(as.factor) %>%
     print()
+
+# "識別番号" 列と "性別" 列を選択
+gender <- demo2 %>%
+  select(識別番号, 性別)
+
 # saveRDS(object = demo2, file = "appdata/demo.obj")
 
 # 3) 閲覧用・アプリ用の「医薬品情報テーブル」の編集
@@ -109,8 +114,12 @@ reac2 <- reac %>%
 
 saveRDS(object = reac2, file = "appdata/reac.obj")
 
-reac_summary <- reac2 %>%
-  dplyr::group_by(有害事象) %>%
+#reac2とgenderを結合させる
+reac3 <- merge(reac2 , gender , by = "識別番号" , all.x = T)
+
+
+reac_summary <- reac3 %>%
+  dplyr::group_by(有害事象 , 性別) %>%
   dplyr::summarise(
     件数 = n(), 
     高齢ROR = NA,
@@ -152,7 +161,18 @@ reac_summary2 <- reac_summary %>%
       )
   ) %>%
   dplyr::relocate(クラス, .after = 件数)
-view(reac_summary2)
 
+Female_data <- reac_summary2 %>%
+  filter(性別 == "女性")
+Male_data <- reac_summary2 %>%
+  filter(性別 == "男性")
+
+view(reac_summary2)
+view(Female_data)
+view(Male_data)
+
+dir.create("summary", showWarnings = FALSE)
 write.csv(x = reac_summary2, file = "summary/reac_summary.csv", fileEncoding = "CP932", row.names = FALSE)
+write.csv(x = Female_data, file = "summary/Female_data.csv", fileEncoding = "CP932", row.names = FALSE)
+write.csv(x = Male_data, file = "summary/Male_data.csv", fileEncoding = "CP932", row.names = FALSE)
 
