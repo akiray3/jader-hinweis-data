@@ -66,9 +66,10 @@ demo2 <- demo %>%
     # dplyr::mutate_all(as.factor) %>%
     print()
 
-# "識別番号" 列と "性別" 列を選択
-gender <- demo2 %>%
-  select(識別番号, 性別)
+
+# "識別番号" 列と "性別" 列を選択 「GSP = gender_senior_polypharmacy」
+GSP <- demo2 %>%　　
+  select(識別番号, 性別, 年代, 多剤併用) #多剤併用はNA値が21687個ある
 
 # saveRDS(object = demo2, file = "appdata/demo.obj")
 
@@ -114,12 +115,12 @@ reac2 <- reac %>%
 
 saveRDS(object = reac2, file = "appdata/reac.obj")
 
-#reac2とgenderを結合させる
-reac3 <- merge(reac2 , gender , by = "識別番号" , all.x = T)
+#reac2とGSPを結合させる
+reac3 <- merge(reac2 , GSP , by = "識別番号" , all.x = T)
 
 
 reac_summary <- reac3 %>%
-  dplyr::group_by(有害事象 , 性別) %>%
+  dplyr::group_by(有害事象 , 性別, 年代, 多剤併用) %>%
   dplyr::summarise(
     件数 = n(), 
     高齢ROR = NA,
@@ -173,6 +174,6 @@ view(Male_data)
 
 dir.create("summary", showWarnings = FALSE)
 write.csv(x = reac_summary2, file = "summary/reac_summary.csv", fileEncoding = "CP932", row.names = FALSE)
-write.csv(x = Female_data, file = "summary/Female_data.csv", fileEncoding = "CP932", row.names = FALSE)
-write.csv(x = Male_data, file = "summary/Male_data.csv", fileEncoding = "CP932", row.names = FALSE)
+write.csv(x = Female_data, file = "summary/201808Female_data.csv", fileEncoding = "CP932", row.names = FALSE)
+write.csv(x = Male_data, file = "summary/201808Male_data.csv", fileEncoding = "CP932", row.names = FALSE)
 
