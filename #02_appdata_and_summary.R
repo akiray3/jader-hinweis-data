@@ -69,8 +69,9 @@ demo2 <- demo %>%
 
 # "識別番号" 列と "性別" 列を選択 「GSP = gender_senior_polypharmacy」
 GSP <- demo2 %>%　　
-  select(識別番号, 性別, 年代, 多剤併用) #多剤併用はNA値が21687個ある
-
+  select(識別番号, 性別, 年代, 多剤併用)%>% #多剤併用はNA値が21687個ある
+  mutate(高齢 = ifelse(年代 == "高齢", 1, 0))%>%
+  mutate(多剤 = ifelse(多剤併用 == "多剤併用", 1, 0))
 # saveRDS(object = demo2, file = "appdata/demo.obj")
 
 # 3) 閲覧用・アプリ用の「医薬品情報テーブル」の編集
@@ -119,8 +120,11 @@ saveRDS(object = reac2, file = "appdata/reac.obj")
 reac3 <- merge(reac2 , GSP , by = "識別番号" , all.x = T)
 
 
+
+#男女混合のデータを作成
 reac_summary <- reac3 %>%
-  dplyr::group_by(有害事象 , 性別, 年代, 多剤併用) %>%
+  dplyr::group_by(有害事象) %>%
+  #dplyr::group_by(有害事象 , 性別, 年代, 多剤併用) %>%
   dplyr::summarise(
     件数 = n(), 
     高齢ROR = NA,
@@ -135,6 +139,7 @@ reac_summary <- reac3 %>%
   dplyr::arrange(-件数) %>%
   dplyr::filter(件数 >= 10) %>%
   print()
+
 
 for (i in 1:nrow(reac_summary)) {
   ae <- as.character(reac_summary$有害事象[i])
@@ -152,6 +157,73 @@ for (i in 1:nrow(reac_summary)) {
   cat(paste0(i, " / ", nrow(reac_summary), "   ", ae), fill = TRUE)
 }
 
+#全件数が何件あるのか確認
+sum(reac_summary$件数) 
+#====---------------------------
+#====---------------------------
+#お試し
+Female_data2 <- reac3 %>%
+  filter(性別 == "女性")
+Male_data2 <- reac3 %>%
+  filter(性別 == "男性")
+
+reac4 <- Male_data2 %>%
+  dplyr::group_by(有害事象) %>%
+  #dplyr::group_by(有害事象 , 性別, 年代, 多剤併用) %>%
+  dplyr::summarise(
+    件数 = n(), 
+    高齢ROR = NA,
+    多剤ROR = NA,
+  ) %>%
+  dplyr::arrange(-件数) %>%
+  dplyr::filter(件数 >= 10) %>%
+  print()
+
+
+fit <- glm((Male_data2$有害事象 == "間質性肺疾患")　~ Male_data2$高齢+Male_data2$多剤, data=Male_data2, family=binomial())
+
+# ロジスティック回帰モデルの係数のオッズ比の算出　
+#exp(coef(fit))は各係数のオッズ比を含むベクトルを生成します。
+odds_ratios <- exp(coef(fit))　
+# 結果の表示
+print(odds_ratios)
+
+# 係数の95%信頼区間の計算
+conf_int <- confint(fit, level=0.95)
+
+# 信頼区間をオッズ比のスケールに変換（上記で出た物をexp(）で変換する)
+odds_ratio_conf_int <- exp(conf_int)
+
+# オッズ比とその95%信頼区間の表示
+print(exp(coef(fit)))
+print(odds_ratio_conf_int)
+
+# 取り出し方
+or <- as.numeric(exp(coef(fit))[["Male_data2$高齢"]])
+##xという説明変数に対するオッズ比を取り出しています。
+lower_S <- odds_ratio_conf_int["Male_data2$高齢", 1]
+upper_S <- odds_ratio_conf_int["Male_data2$高齢", 2]
+
+
+print(or)
+print(lower)
+print(upper)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#====---------------------------
+#====---------------------------
 reac_summary2 <- reac_summary %>%
   dplyr::mutate(
       クラス = case_when(
@@ -163,11 +235,14 @@ reac_summary2 <- reac_summary %>%
   ) %>%
   dplyr::relocate(クラス, .after = 件数)
 
+
 Female_data <- reac_summary2 %>%
   filter(性別 == "女性")
 Male_data <- reac_summary2 %>%
   filter(性別 == "男性")
 
+
+  
 view(reac_summary2)
 view(Female_data)
 view(Male_data)
