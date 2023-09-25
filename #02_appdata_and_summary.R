@@ -10,6 +10,7 @@ reac <- reac2
 rm(list = ls()[!ls() %in% c("demo", "drug", "hist", "reac")])
 gc(); gc(); #メモリの解放
 
+
 # 1) 閲覧用・アプリ用の「患者情報テーブル」の編集
 demo2 <- demo %>% 
     dplyr::left_join(
@@ -18,7 +19,8 @@ demo2 <- demo %>%
         dplyr::group_by(識別番号) %>%
         dplyr::summarise(
           薬剤名 = paste(医薬品一般名, collapse = "\n"),
-          薬剤数 = n(),
+         薬剤数 = n(),
+#          薬剤数 = length(unique(医薬品一般名)) 
         ) %>%
         dplyr::mutate(
           多剤併用 = ifelse(薬剤数 >= 6, "多剤併用", "非多剤併用")
@@ -67,12 +69,6 @@ demo2 <- demo %>%
     print()
 
 
-# "識別番号" 列と "性別" 列を選択 「GSP = gender_senior_polypharmacy」
-GSP <- demo2 %>%　　
-  select(識別番号, 性別, 年代, 多剤併用)%>% #多剤併用はNA値が21687個ある
-  mutate(高齢 = ifelse(年代 == "高齢", 1, 0))%>%
-  mutate(多剤 = ifelse(多剤併用 == "多剤併用", 1, 0))
-# saveRDS(object = demo2, file = "appdata/demo.obj")
 
 # 3) 閲覧用・アプリ用の「医薬品情報テーブル」の編集
 drug2 <- drug %>%
@@ -113,142 +109,151 @@ reac2 <- reac %>%
   dplyr::select(識別番号, 有害事象, 転帰) %>%
   # dplyr::mutate_all(as.factor) %>%
   print()
+#saveRDS(object = reac2, file = "appdata/reac.obj")
 
-saveRDS(object = reac2, file = "appdata/reac.obj")
+
+# "識別番号" 列と "性別" 列を選択 「GSP = gender_senior_polypharmacy」
+GSP <- demo2 %>%　　
+  select(識別番号, 性別, 年代, 多剤併用)%>% 
+  mutate(高齢 = ifelse(年代 == "高齢", 1, 0))%>%
+  mutate(多剤 = ifelse(多剤併用 == "多剤併用", 1, 0))
 
 #reac2とGSPを結合させる
 reac3 <- merge(reac2 , GSP , by = "識別番号" , all.x = T)
 
 
 
-#男女混合のデータを作成
-reac_summary <- reac3 %>%
+#===================================
+#===================================
+
+reac4M <- reac3 %>%
+  dplyr::filter(性別 == "男性")%>%
   dplyr::group_by(有害事象) %>%
   #dplyr::group_by(有害事象 , 性別, 年代, 多剤併用) %>%
   dplyr::summarise(
     件数 = n(), 
     高齢ROR = NA,
     多剤ROR = NA,
-    死亡 = sum(転帰 == "死亡"),
-    未回復 = sum(転帰 == "未回復"),
-    後遺症あり = sum(転帰 == "後遺症あり"),
-    軽快 = sum(転帰 == "軽快"),
-    回復 = sum(転帰 == "回復"),
-    その他不明 = sum(!転帰 %in% c("死亡", "未回復", "後遺症あり", "軽快", "回復"))
+    高齢LOW = NA,
+    高齢UP  = NA,
+    多剤LOW = NA,
+    多剤UP  = NA,
   ) %>%
   dplyr::arrange(-件数) %>%
   dplyr::filter(件数 >= 10) %>%
   print()
 
-
-for (i in 1:nrow(reac_summary)) {
-  ae <- as.character(reac_summary$有害事象[i])
-  発症 <- stringr::str_detect(string = demo2$有害事象, pattern = ae)
-  t1 <- table(発症, 高齢 = demo2$年代 == "高齢")
-  ror1 <- round((t1[2,2] / t1[1,2]) / (t1[2,1] / t1[1,1]),3)
-  reac_summary$高齢ROR[i] <- ror1
-  reac_summary$高齢ROR_Lower[i] = ror1 * exp(-1.96 * sqrt(sum(1 / t1)))
-  reac_summary$高齢ROR_Upper[i] = ror1 * exp(1.96 * sqrt(sum(1 / t1)))
-  t2 <- table(発症, 多剤 = demo2$多剤併用 == "多剤併用")
-  ror2 <- round((t2[2,2] / t2[1,2]) / (t2[2,1] / t2[1,1]),3)
-  reac_summary$多剤ROR[i] <- ror2
-  reac_summary$多剤ROR_Lower[i] = ror2 * exp(-1.96 * sqrt(sum(1 / t2)))
-  reac_summary$多剤ROR_Upper[i] = ror2 * exp(1.96 * sqrt(sum(1 / t2)))
-  cat(paste0(i, " / ", nrow(reac_summary), "   ", ae), fill = TRUE)
+for(i in 1:nrow(reac4M)) {
+  ae <- as.character(reac4M$有害事象[i])
+  subidM <- reac3 %>%
+    dplyr::filter(有害事象 == ae & 性別　== "男性") %>%
+    dplyr::pull(識別番号)
+  #全患者の識別番号　＋　ロジスティック回帰分析
+  resM <- demo2 %>% 
+    dplyr::filter(性別　== "男性") %>% 
+    dplyr::mutate(
+      発症 = 識別番号 %in% subidM,
+      年代 = 年代 == "高齢",
+      多剤併用　= 多剤併用 =="多剤併用"
+    ) %>%
+    dplyr::select(発症, 年代, 多剤併用) %>% 
+    glm(発症 ~ 年代 + 多剤併用, data = ., family=binomial()) %>%
+    summary()
+  #オッズ比を計算
+  odds_ratios <- exp(coef(resM))
+  reac4M$高齢ROR[i] <- odds_ratios["年代TRUE", "Estimate"]
+  reac4M$高齢LOW[i] <- exp(resM$coefficients["年代TRUE", "Estimate"] - 1.96 * resM$coefficients["年代TRUE", "Std. Error"])
+  reac4M$高齢UP[i]  <- exp(resM$coefficients["年代TRUE", "Estimate"] + 1.96 * resM$coefficients["年代TRUE", "Std. Error"])
+  reac4M$多剤ROR[i] <- odds_ratios["多剤併用TRUE", "Estimate"]
+  reac4M$多剤LOW[i] <- exp(resM$coefficients["多剤併用TRUE", "Estimate"] - 1.96 * resM$coefficients["多剤併用TRUE", "Std. Error"])
+  reac4M$多剤UP[i] <- exp(resM$coefficients["多剤併用TRUE", "Estimate"] + 1.96 * resM$coefficients["多剤併用TRUE", "Std. Error"])
+  cat(paste0(i, " / ", nrow(reac4M), "   ", ae), fill = TRUE)
 }
 
-#全件数が何件あるのか確認
-sum(reac_summary$件数) 
-#====---------------------------
-#====---------------------------
-#お試し
-Female_data2 <- reac3 %>%
-  filter(性別 == "女性")
-Male_data2 <- reac3 %>%
-  filter(性別 == "男性")
-
-reac4 <- Male_data2 %>%
-  dplyr::group_by(有害事象) %>%
-  #dplyr::group_by(有害事象 , 性別, 年代, 多剤併用) %>%
-  dplyr::summarise(
-    件数 = n(), 
-    高齢ROR = NA,
-    多剤ROR = NA,
-  ) %>%
-  dplyr::arrange(-件数) %>%
-  dplyr::filter(件数 >= 10) %>%
-  print()
-
-
-fit <- glm((Male_data2$有害事象 == "間質性肺疾患")　~ Male_data2$高齢+Male_data2$多剤, data=Male_data2, family=binomial())
-
-# ロジスティック回帰モデルの係数のオッズ比の算出　
-#exp(coef(fit))は各係数のオッズ比を含むベクトルを生成します。
-odds_ratios <- exp(coef(fit))　
-# 結果の表示
-print(odds_ratios)
-
-# 係数の95%信頼区間の計算
-conf_int <- confint(fit, level=0.95)
-
-# 信頼区間をオッズ比のスケールに変換（上記で出た物をexp(）で変換する)
-odds_ratio_conf_int <- exp(conf_int)
-
-# オッズ比とその95%信頼区間の表示
-print(exp(coef(fit)))
-print(odds_ratio_conf_int)
-
-# 取り出し方
-or <- as.numeric(exp(coef(fit))[["Male_data2$高齢"]])
-##xという説明変数に対するオッズ比を取り出しています。
-lower_S <- odds_ratio_conf_int["Male_data2$高齢", 1]
-upper_S <- odds_ratio_conf_int["Male_data2$高齢", 2]
-
-
-print(or)
-print(lower)
-print(upper)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#====---------------------------
-#====---------------------------
-reac_summary2 <- reac_summary %>%
+reac4M2 <- reac4M %>%
   dplyr::mutate(
-      クラス = case_when(
-          高齢ROR_Lower  > 1 & 多剤ROR_Lower  > 1 ~ "class1",
-          高齢ROR_Lower  > 1 & 多剤ROR_Lower  <= 1 ~ "class2",
-          高齢ROR_Lower  <= 1 & 多剤ROR_Lower  > 1 ~ "class3",
-          高齢ROR_Lower  <= 1 & 多剤ROR_Lower  <= 1 ~ "class4"
-      )
+    クラス = case_when(
+      reac4M$高齢LOW  > 1 & reac4M$多剤LOW  > 1 ~ "class1",
+      reac4M$高齢LOW  > 1 & reac4M$多剤LOW  <= 1 ~ "class2",
+      reac4M$高齢LOW  <= 1 & reac4M$多剤LOW  > 1 ~ "class3",
+      reac4M$高齢LOW  <= 1 & reac4M$多剤LOW  <= 1 ~ "class4"
+    )
   ) %>%
   dplyr::relocate(クラス, .after = 件数)
 
 
-Female_data <- reac_summary2 %>%
-  filter(性別 == "女性")
-Male_data <- reac_summary2 %>%
-  filter(性別 == "男性")
+#===================================
+#===================================
 
+
+
+reac4F <- reac3 %>%
+  dplyr::filter(性別 == "女性")%>%
+  dplyr::group_by(有害事象) %>%
+  #dplyr::group_by(有害事象 , 性別, 年代, 多剤併用) %>%
+  dplyr::summarise(
+    件数 = n(), 
+    高齢ROR = NA,
+    多剤ROR = NA,
+    高齢LOW = NA,
+    高齢UP  = NA,
+    多剤LOW = NA,
+    多剤UP  = NA,
+  ) %>%
+  dplyr::arrange(-件数) %>%
+  dplyr::filter(件数 >= 10) %>%
+  print()
+
+for(i in 1:nrow(reac4F)) {
+  ae <- as.character(reac4F$有害事象[i])
+  subidF <- reac3 %>%
+    dplyr::filter(有害事象 == ae & 性別　== "女性") %>%
+    dplyr::pull(識別番号)
+  #全患者の識別番号　＋　ロジスティック回帰分析
+  resF <- demo2 %>% 
+    dplyr::filter(性別　== "女性") %>% 
+    dplyr::mutate(
+      発症 = 識別番号 %in% subidF,
+      年代 = 年代 == "高齢",
+      多剤併用　= 多剤併用 =="多剤併用"
+    ) %>%
+    dplyr::select(発症, 年代, 多剤併用) %>% 
+    glm(発症 ~ 年代 + 多剤併用, data = ., family=binomial()) %>%
+    summary()
+  #オッズ比を計算
+  odds_ratios <- exp(coef(resF))
+  reac4F$高齢ROR[i] <- odds_ratios["年代TRUE", "Estimate"]
+  reac4F$高齢LOW[i] <- exp(resF$coefficients["年代TRUE", "Estimate"] - 1.96 * resF$coefficients["年代TRUE", "Std. Error"])
+  reac4F$高齢UP[i]  <- exp(resF$coefficients["年代TRUE", "Estimate"] + 1.96 * resF$coefficients["年代TRUE", "Std. Error"])
+  reac4F$多剤ROR[i] <- odds_ratios["多剤併用TRUE", "Estimate"]
+  reac4F$多剤LOW[i] <- exp(resF$coefficients["多剤併用TRUE", "Estimate"] - 1.96 * resF$coefficients["多剤併用TRUE", "Std. Error"])
+  reac4F$多剤UP[i] <- exp(resF$coefficients["多剤併用TRUE", "Estimate"] + 1.96 * resF$coefficients["多剤併用TRUE", "Std. Error"])
+  cat(paste0(i, " / ", nrow(reac4F), "   ", ae), fill = TRUE)
+}
+
+
+reac4F2 <- reac4F %>%
+  dplyr::mutate(
+    クラス = case_when(
+      reac4F$高齢LOW  > 1 & reac4F$多剤LOW  > 1 ~ "class1",
+      reac4F$高齢LOW  > 1 & reac4F$多剤LOW  <= 1 ~ "class2",
+      reac4F$高齢LOW  <= 1 & reac4F$多剤LOW  > 1 ~ "class3",
+      reac4F$高齢LOW  <= 1 & reac4F$多剤LOW  <= 1 ~ "class4"
+    )
+  ) %>%
+  dplyr::relocate(クラス, .after = 件数)
+
+#===================================
+#===================================
 
   
-view(reac_summary2)
-view(Female_data)
-view(Male_data)
+view(reac4F2)
+view(reac4M2)
 
 dir.create("summary", showWarnings = FALSE)
-write.csv(x = reac_summary2, file = "summary/reac_summary.csv", fileEncoding = "CP932", row.names = FALSE)
-write.csv(x = Female_data, file = "summary/201808Female_data.csv", fileEncoding = "CP932", row.names = FALSE)
-write.csv(x = Male_data, file = "summary/201808Male_data.csv", fileEncoding = "CP932", row.names = FALSE)
+write.csv(x = reac4F2, file = "summary/201808Female_data0922.csv", fileEncoding = "CP932", row.names = FALSE)
+write.csv(x = reac4M2, file = "summary/201808Male_data0922.csv", fileEncoding = "CP932", row.names = FALSE)
+#write.csv(x = reac_summary2, file = "summary/reac_summary.csv", fileEncoding = "CP932", row.names = FALSE)
+#write.csv(x = Female_data, file = "summary/201808Female_data.csv", fileEncoding = "CP932", row.names = FALSE)
+#write.csv(x = Male_data, file = "summary/201808Male_data.csv", fileEncoding = "CP932", row.names = FALSE)
 
