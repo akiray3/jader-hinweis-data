@@ -5,7 +5,7 @@ ls() # オブジェクトの一覧を確認しておく
 
 # 新しく作業を始めるので、番号を振りなおす
 demo <- demo2
-drug <- drug3
+drug <- drug2 #3 10/2より、一旦drug3をdrug2に変更し、demo2の年齢のところも変えた
 reac <- reac2
 rm(list = ls()[!ls() %in% c("demo", "drug", "hist", "reac")])
 gc(); gc(); #メモリの解放
@@ -44,14 +44,14 @@ demo2 <- demo %>%
     dplyr::mutate(
       年代 = case_when(
           年齢 %in% c(
-              paste0(seq(from = 10, to = 60, by = 10), "歳代"), "10歳未満", 
-              "成人", "小児", "青少年", "新生児", "乳幼児",
-              "第三トライメスター", "第二トライメスター",
-              "第一トライメスター", "胎児"
+              paste0(seq(from = 10, to = 60, by = 10), "歳代")#, "10歳未満", 
+              #"成人", "小児", "青少年", "新生児", "乳幼児",
+              #"第三トライメスター", "第二トライメスター",
+              #"第一トライメスター", "胎児"
           ) ~ "非高齢",
           年齢 %in% c(
-              paste0(seq(from = 70, to = 200, by = 10), "歳代"),
-              "高齢者"
+              paste0(seq(from = 70, to = 200, by = 10), "歳代")#,
+              #"高齢者"
           ) ~ "高齢"
       )
     ) %>%
@@ -251,8 +251,8 @@ view(reac4F2)
 view(reac4M2)
 
 dir.create("summary", showWarnings = FALSE)
-write.csv(x = reac4F2, file = "summary/201808Female_data0922.csv", fileEncoding = "CP932", row.names = FALSE)
-write.csv(x = reac4M2, file = "summary/201808Male_data0922.csv", fileEncoding = "CP932", row.names = FALSE)
+write.csv(x = reac4F2, file = "summary/201808Female_data1002.csv", fileEncoding = "CP932", row.names = FALSE)
+write.csv(x = reac4M2, file = "summary/201808Male_data1002.csv", fileEncoding = "CP932", row.names = FALSE)
 #write.csv(x = reac_summary2, file = "summary/reac_summary.csv", fileEncoding = "CP932", row.names = FALSE)
 #write.csv(x = Female_data, file = "summary/201808Female_data.csv", fileEncoding = "CP932", row.names = FALSE)
 #write.csv(x = Male_data, file = "summary/201808Male_data.csv", fileEncoding = "CP932", row.names = FALSE)
