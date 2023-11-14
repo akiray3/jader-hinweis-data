@@ -11,7 +11,7 @@ rm(list = ls()[!ls() %in% c("demo", "drug", "hist", "reac")])
 gc(); gc(); #メモリの解放
 
 # 1) 閲覧用・アプリ用の「患者情報テーブル」の編集
-demo2 <- demo %>% 
+demo2 <- demo %>%
     dplyr::left_join(
       .,
       drug %>%
