@@ -1,6 +1,6 @@
 #02_data_integration
 # 01を実行したうえで、このスクリプトを開く
-source("#01_data_cleansing.R") # まだ実行していない場合
+# source("#01_data_cleansing.R") # まだ実行していない場合
 ls() # オブジェクトの一覧を確認しておく
 
 # 新しく作業を始めるので、番号を振りなおす
@@ -83,7 +83,7 @@ drug2 <- drug %>%
   dplyr::rename(薬剤名 = 医薬品一般名) %>%
   # dplyr::mutate_all(.funs = as.factor) %>%
   print()
-# saveRDS(object = drug2, file = "appdata/drug.obj")
+saveRDS(object = drug2, file = "appdata/drug.obj")
 
 drug_summary <- drug2 %>%
   dplyr::group_by(薬剤名) %>%
